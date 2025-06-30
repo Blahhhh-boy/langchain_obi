@@ -45,6 +45,7 @@ const llm = new ChatOpenAI({
 const stateSchema = z.object({
   input: z.string(),
   flow: z.enum(["booking", "general"]),
+  sessionid:z.string(),
   done: z.boolean(),
   currentNode: z.string().optional(), // <--- NEW
   collected: z.object({
@@ -99,10 +100,10 @@ const scheduleStep = async (state) => {
     state.productid === "ARRIVALONLY" ||
     state.productid === "ARRIVALBUNDLE"
   ) {
-    responseHandler["A"] = await getSchedule(state.collected.A);
+    responseHandler["A"] = await getSchedule(state.collected.A,state.sessionid);
   }
   if (state.productid === "DEPARTURE" || state.productid === "ARRIVALBUNDLE") {
-    responseHandler["D"] = await getSchedule(state.collected.D);
+    responseHandler["D"] = await getSchedule(state.collected.D,state.sessionid);
   }
 
   return {
@@ -120,7 +121,7 @@ const reserveStep = async (state) => {
     adulttickets: state.collected[direction].tickets.adulttickets,
     scheduleData: state.scheduleData,
     productid: state.productid,
-  });
+  },state.sessionid);
   console.log("reserver response : ", response);
   return { reseravationData: response, currentNode: "reservation" };
 };
@@ -198,7 +199,19 @@ const productType = async (state) => {
   if (!parsed?.done) {
     return interrupt({ prompt: parsed.message });
   }
+  const loginReq = {
+    failstatus:0,
+    request:{
+      getpaymentgateway:"Y",
+      languageid:'en',
+      marketid:'JAM',
+      password:"5f4dcc3b5aa765d61d8327deb882cf99",
+      username:process.env.STATIC_USERNAME
+    }
+  }
+  const sessionid = await axios.post(`${process.env.DEVSERVER}/login`,loginReq)
   return {
+    sessionid:sessionid.data.data.sessionid,
     done: parsed.done,
     collected: { ...state.collected, productid: parsed.collected.productid },
     productid: parsed.collected.productid,
@@ -222,7 +235,7 @@ const contactHandler = async (state) => {
   if (!parsed?.done) {
     return interrupt({ prompt: parsed.message });
   }
-  console.log(parsed,"passenger details")
+  
   return {
     done: parsed.done,
     contactInfo: parsed.contact,
@@ -235,7 +248,7 @@ const setContactStep = async (state) => {
   const response = await setContact({
     ...state.contactInfo,
     reseravationData: state.reseravationData,
-  });
+  },state.sessionid);
   console.log("setcontact response ", response);
   return {};
 };
@@ -398,11 +411,11 @@ export async function getSchedule({
   airportid,
   traveldate,
   flightId,
-}) {
+},sessionid) {
   // console.log("hey from get schedule");
   const request = {
     username: process.env.STATIC_USERNAME,
-    sessionid: process.env.STATIC_SESSIONID,
+    sessionid: sessionid,
     failstatus: 0,
     request: {
       direction: direction,
@@ -430,7 +443,7 @@ export async function reserveCart({
   childtickets,
   scheduleData,
   productid,
-}) {
+},sessionid) {
   const scheduleBuilder = {
     arrivalscheduleid: 0,
     departurescheduleid: 0,
@@ -445,7 +458,7 @@ export async function reserveCart({
   // console.log(scheduleBuilder, scheduleData);
   const request = {
     failstatus: 0,
-    sessionid: process.env.STATIC_SESSIONID,
+    sessionid: sessionid,
     username: process.env.STATIC_USERNAME,
     request: {
       adulttickets: adulttickets,
@@ -478,7 +491,7 @@ export async function setContact({
   lastname,
   phone,
   reseravationData,
-}) {
+},sessionid) {
   const request = {
     failstatus: 0,
     request: {
@@ -491,7 +504,7 @@ export async function setContact({
         title: "MR.",
       },
     },
-    sessionid: process.env.STATIC_SESSIONID,
+    sessionid: sessionid,
     username: process.env.STATIC_USERNAME,
   };
 
@@ -509,11 +522,13 @@ export async function setContact({
 
 export async function processPayment({ state }) {
 
+  const sessionid = state.sessionid
+
   const getCartItemsReq = {
     failstatus:0,
     request:{},
     username:process.env.STATIC_USERNAME,
-    sessionid:process.env.STATIC_SESSIONID
+    sessionid:sessionid
   }
 
   const getCartItems = await axios.post(`${process.env.DEVSERVER}/getcartitems`,getCartItemsReq)
@@ -551,7 +566,7 @@ export async function processPayment({ state }) {
       source:"OBI-MAIN",
       amount:amount
     },
-    sessionid:process.env.STATIC_SESSIONID,
+    sessionid:sessionid,
     username:process.env.STATIC_USERNAME
   }
 
@@ -648,7 +663,7 @@ export async function processPayment({ state }) {
       },
       subaffiliateid:0         
     },
-    sessionid:process.env.STATIC_SESSIONID,
+    sessionid:sessionid,
     username:process.env.STATIC_USERNAME
   }
 
@@ -669,7 +684,7 @@ export async function processPayment({ state }) {
       },
     orderid: orderidres.data.data.orderid,
     },
-    sessionid: process.env.STATIC_SESSIONID,
+    sessionid: sessionid,
     username: process.env.STATIC_USERNAME,
   }
 
@@ -708,7 +723,7 @@ export async function processPayment({ state }) {
       },
       subaffiliateid:0,
     },
-    sessionid: process.env.STATIC_SESSIONID,
+    sessionid: sessionid,
     username: process.env.STATIC_USERNAME
   }
 
