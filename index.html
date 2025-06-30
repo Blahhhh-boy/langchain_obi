@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LangGraph Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <h2>AI Assistant</h2>
+  <div id="conversation"></div>
+  <input type="text" id="input" placeholder="Type your message..." />
+  <button onclick="send()">Send</button>
+
+  <script>
+    let state = {};
+
+    async function send() {
+      const input = document.getElementById("input").value;
+      document.getElementById("input").value = "";
+
+      appendMessage("you", input);
+
+      const res = await axios.post("http://localhost:3001/api/chat", {
+        input,
+        state
+      });
+
+      state = res.data.state;
+      console.log("Updated state:", state);
+
+      if (state.type === "prompt") {
+        appendMessage("ai", state.prompt);
+      } else if (res.data.type === "final") {
+        appendMessage("ai", "✅ Flow completed. Thank you!");
+        if (state.state.paymentHtml) {
+          const html = decodeHtml(state.state.paymentHtml);
+          const iframe = document.createElement("iframe");
+          iframe.srcdoc = html;
+          iframe.width = "100%";
+          iframe.height = "400";
+          document.getElementById("conversation").appendChild(iframe);
+        }
+      }
+    }
+
+    function appendMessage(sender, text) {
+      const div = document.createElement("div");
+      div.innerText = `${sender}: ${text}`;
+      document.getElementById("conversation").appendChild(div);
+    }
+
+    function decodeHtml(html) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = html;
+      return txt.value;
+    }
+  </script>
+</body>
+</html>

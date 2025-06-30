@@ -1,0 +1,28 @@
+{
+  "name": "langgraph",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./workflow.graph.js",
+    "server": "node ./server.js",
+    "sample": "node ./sample/sample.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "dependencies": {
+    "@langchain/core": "^0.3.58",
+    "@langchain/langgraph": "^0.3.1",
+    "@langchain/langgraph-cli": "^0.0.38",
+    "@langchain/openai": "^0.5.13",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.64"
+  }
+}
